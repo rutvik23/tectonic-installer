@@ -110,9 +110,11 @@ pipeline {
         failure {
           reportStatusToGithub('failure', originalCommitId)
         }
+/*
         always {
           archiveArtifacts allowEmptyArchive: true, artifacts: 'bazel-bin/tectonic/**/logs/**'
         }
+*/
       }
     }
     
@@ -172,6 +174,6 @@ def forcefullyCleanWorkspace() {
 
 def reportStatusToGithub(status, commitId) {
   withCredentials(creds) {
-    sh "./tests/jenkins-jobs/scripts/report-status-to-github.sh ${status} smoke-test ${commitId} ${params.GITHUB_REPO}"
+    sh "./tests/jenkins-jobs/scripts/report-status-to-github.sh ${status} smoke-test ${commitId} ${params.GITHUB_REPO} || true"
   }
 }
