@@ -1,11 +1,8 @@
 #!/bin/bash -xe
 #shellcheck disable=SC2155
 
-#set -eo pipefail
 exec 2>&1
 
-#LICENSE_PATH=""
-#PULL_SECRET_PATH=""
 DOMAIN="tectonic-ci.de"
 CLUSTER_NAME="$(uuidgen -r | cut -c1-8)"
 SMOKE_TEST_OUTPUT=""
@@ -26,7 +23,8 @@ export AWS_DEFAULT_REGION="${AWS_REGION}"
 
 echo -e "\\e[36m Starting build process...\\e[0m"
 bazel build tarball tests/smoke
-#docker run --rm -v $PWD:$PWD:Z -w $PWD quay.io/coreos/tectonic-builder:bazel-v0.3 bazel build tarball tests/smoke
+# In future bazel build could be extracted to another job which could be running in docker container like this: 
+# docker run --rm -v $PWD:$PWD:Z -w $PWD quay.io/coreos/tectonic-builder:bazel-v0.3 bazel build tarball tests/smoke
 
 echo -e "\\e[36m Unpacking artifacts...\\e[0m"
 tar -zxf bazel-bin/tectonic-dev.tar.gz
@@ -49,7 +47,6 @@ echo "${CONFIG}" | python -c 'import sys, yaml, json; yaml.safe_dump(json.load(s
 
 echo -e "\\e[36m Initializing Tectonic...\\e[0m"
 tectonic init --config="${CLUSTER_NAME}".yaml
-export SMOKE_KUBECONFIG="$(pwd)/$CLUSTER_NAME/generated/auth/kubeconfig"
 
 ### ASSUME ROLE ###
 echo -e "\\e[36m Setting up AWS credentials...\\e[0m"
@@ -64,7 +61,6 @@ export AWS_SESSION_TOKEN=$(echo "${RES}" | jq --raw-output '.Credentials.Session
 ### HANDLE SSH KEY ###
 echo -e "\\e[36m Uploading SSH key-pair to AWS...\\e[0m"
 if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
-  #cat /dev/zero | ssh-keygen -b 2048 -t rsa -f $HOME/.ssh/id_rsa -q -N ""
   #shellcheck disable=SC2034
   SSH=$(ssh-keygen -b 2048 -t rsa -f "${HOME}/.ssh/id_rsa" -N "" < /dev/zero)
 fi
@@ -74,6 +70,8 @@ export TF_VAR_tectonic_aws_ssh_key="jenkins-${CLUSTER_NAME}"
 echo -e "\\e[36m Deploying Tectonic...\\e[0m"
 tectonic install --dir="${CLUSTER_NAME}"
 echo -e "\\e[36m Running smoke test...\\e[0m"
+export SMOKE_KUBECONFIG="$(pwd)/$CLUSTER_NAME/generated/auth/kubeconfig"
+export SMOKE_NETWORKING="canal"
+export SMOKE_NODE_COUNT="7"  # Sum of all nodes (etcd + master + worker)
+export SMOKE_MANIFEST_PATHS="$(pwd)/$CLUSTER_NAME/generated"
 SMOKE_TEST_OUTPUT=$(./smoke 2>&1)
-#echo -e "\\e[36m Smoke tests finished with status:\\e[0m ${SMOKE_TEST_OUTPUT}"
-##tectonic destroy --dir=$CLUSTER_NAME
