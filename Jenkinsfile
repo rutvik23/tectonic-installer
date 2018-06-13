@@ -110,11 +110,6 @@ pipeline {
         failure {
           reportStatusToGithub('failure', originalCommitId)
         }
-/*
-        always {
-          archiveArtifacts allowEmptyArchive: true, artifacts: 'bazel-bin/tectonic/**/logs/**'
-        }
-*/
       }
     }
     
